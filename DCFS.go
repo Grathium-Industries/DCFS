@@ -1,3 +1,18 @@
+/*
+	This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package main
 
 import (
@@ -6,15 +21,17 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
 	// INITILIZATION
 	fmt.Println("Finding Peers...")
-	getServers()
+	discoverServers()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		files := (r.URL.Query()).Get("file")
@@ -29,35 +46,24 @@ func main() {
 	fs := http.FileServer(http.Dir("files/"))
 	http.Handle("/files/", http.StripPrefix("/files/", fs))
 
-	fmt.Println("\nStarted server on port :4422")
+	fmt.Println("Started server on port :4422")
+	fmt.Println("============================")
 	http.ListenAndServe(":4422", nil)
+
+	// initilize and load GUI
+	GUILoad()
 }
 
 // find p2p servers
-func getServers() {
-	file, err := os.Open("/files/servers.txt")
-
-	if err != nil {
-		log.Fatalf("failed opening file: %s", err)
-	}
-
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-	var txtlines []string
-
-	for scanner.Scan() {
-		txtlines = append(txtlines, scanner.Text())
-	}
-
-	file.Close()
-
-	for _, serverListIndex := range txtlines {
+func discoverServers() {
+	for _, serverListIndex := range split(readFile("files/servers.txt"), '$') {
 		// serverListIndex = current scanning line
-		serverScanning := string(getHTML(serverListIndex + "/?file=servers.txt"))
+		remoteServer := string(getHTML(serverListIndex + "/?file=servers.txt"))
 
 		// read the remote server list
 		// and compare if the server is already known
-		for _, remoteServeList := range split(serverScanning, '$') {
+		for _, remoteServeList := range split(remoteServer, '$') {
+
 			// read the whole file at once
 			b, err := ioutil.ReadFile("files/servers.txt")
 			if err != nil {
@@ -66,14 +72,51 @@ func getServers() {
 			localServerList := string(b)
 
 			// compare local list to index
-			for i := 0; i < len(remoteServeList); i++ {
-				if strings.Contains(localServerList, remoteServeList[i]) == false {
-					writeToFile("files/servers.txt", remoteServeList[i]+"$")
-				}
+			// append if not known in local list
+			if strings.Contains(localServerList, remoteServeList) == false {
+				writeToFile("files/servers.txt", remoteServeList+"$")
 			}
 
 		}
 	}
+}
+
+// select server to use from local server list
+func selectServer() string {
+	localServerCount := strings.Count(readFile("file/servers.txt"), "$")
+
+	var localServers []string
+	for _, serverListRead := range split(readFile("files/servers.txt"), '$') {
+		localServers = append(localServers, serverListRead)
+	}
+
+	return localServers[randomNum(0, localServerCount)]
+}
+
+// GUILoad componants and rendering
+func GUILoad() {
+	for {
+		fmt.Println("Finding Peers...")
+		fmt.Println("Started server on port :4422")
+		fmt.Println("============================")
+		fmt.Println("\nGet File,")
+
+		// get user input and load website
+		webBrowserOpen(selectServer() + "/?file=" + getInput())
+
+		// vanity function
+		clearScreen()
+	}
+}
+
+// open web browser
+func webBrowserOpen(website string) {
+}
+
+// random number function
+func randomNum(min int, max int) int {
+	rand.Seed(time.Now().UnixNano())
+	return (rand.Intn(max-min+1) + min)
 }
 
 // create remote server list array
@@ -155,6 +198,12 @@ func getHTML(server string) []byte {
 	return html
 }
 
+func getInput() string {
+	reader := bufio.NewReader(os.Stdin)
+	text, _ := reader.ReadString('\n')
+	return text
+}
+
 /* error checking function */
 func isError(err error) bool {
 	if err != nil {
@@ -163,3 +212,5 @@ func isError(err error) bool {
 
 	return (err != nil)
 }
+
+func clearScreen() { print("\033[H\033[2J") }
