@@ -30,7 +30,7 @@ import (
 
 func main() {
 	// INITILIZATION
-	fmt.Println("Finding Peers...")
+	fmt.Println("Connecting to Peers...")
 	discoverServers()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -181,7 +181,7 @@ func writeToFile(filename string, data string) error {
 }
 
 func getHTML(server string) []byte {
-	url := server
+	url := "http://" + server
 	resp, err := http.Get(url)
 	// handle the error if there is one
 	if err != nil {
