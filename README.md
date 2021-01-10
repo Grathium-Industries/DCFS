@@ -1,5 +1,5 @@
 # **_Discovery Controlled File System (DCFS)_**  
-### by: _Grathium Industries_ & _Zapre_  
+### by: _Hudson Newey (Grathium Industries)_ & _Zapre_  
 ---  
   
 ##### This project is in: _Alpha_ builds, please stand by for further releases
